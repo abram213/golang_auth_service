@@ -22,12 +22,12 @@ func main() {
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
 		ch := make(chan os.Signal, 1)
 		signal.Notify(ch, os.Interrupt)
 		<-ch
 		finish()
 		log.Fatalln("signal caught. shutting down...")
-		wg.Done()
 	}(wg)
 
 	if err := startService(ctx, addr, config); err != nil {

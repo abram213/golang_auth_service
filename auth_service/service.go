@@ -14,48 +14,51 @@ import (
 	"sync"
 )
 
-//todo: write comments, structure code
-
+//MainServer struct combines Auth and Admin services
 type MainServer struct {
 	*AuthManager
 	*AdminManager
 }
 
-type AuthManager struct{
-	registeredUsers	map[string]user
-	loginUsers     	map[string]user
-	config 			jwtConfig
+//AuthManager contains jwt config and fields to store users
+type AuthManager struct {
+	registeredUsers map[string]user
+	loginUsers      map[string]user
+	config          jwtConfig
 }
 
+//AdminManager contains channels to store logging connections
 type AdminManager struct {
 	ctx context.Context
 	mu  *sync.RWMutex
 
-	loggingBroadcast   chan *proto.Event
-	loggingListeners   []chan *proto.Event
+	loggingBroadcast chan *proto.Event
+	loggingListeners []chan *proto.Event
 }
 
-func NewMainServer(ctx context.Context, config jwtConfig) *MainServer {
+//newMainServer create new MainServer entity
+func newMainServer(ctx context.Context, config jwtConfig) *MainServer {
 	var logLs []chan *proto.Event
 	logB := make(chan *proto.Event)
 	return &MainServer{
 		&AuthManager{
-			config: config,
+			config:          config,
 			registeredUsers: map[string]user{},
-			loginUsers: map[string]user{},
+			loginUsers:      map[string]user{},
 		},
 		&AdminManager{
-			mu:                 &sync.RWMutex{},
-			ctx:                ctx,
-			loggingBroadcast:   logB,
-			loggingListeners:   logLs,
+			mu:               &sync.RWMutex{},
+			ctx:              ctx,
+			loggingBroadcast: logB,
+			loggingListeners: logLs,
 		},
 	}
 }
 
+//startService start gRPC server
 func startService(ctx context.Context, addr string, config jwtConfig) error {
 	g, ctx := errgroup.WithContext(ctx)
-	ms := NewMainServer(ctx, config)
+	ms := newMainServer(ctx, config)
 
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -106,15 +109,16 @@ func (am *AuthManager) Register(ctx context.Context, data *proto.ReqUserData) (*
 		return nil, status.Errorf(codes.AlreadyExists, "user with such login already exist")
 	}
 
-	id := "dsdfekijdiw67s6d87wadn"
 	user := user{
-		id:           id,
 		login:        data.Login,
 		passwordHash: data.Password,
 		admin:        false,
 	}
 	if err := user.hashPassword(); err != nil {
 		return nil, status.Errorf(codes.Internal, fmt.Sprintf("hashing password err: %v", err))
+	}
+	if err := user.generateID(); err != nil {
+		return nil, status.Errorf(codes.Internal, fmt.Sprintf("generating id err: %v", err))
 	}
 
 	am.registeredUsers[data.Login] = user
@@ -134,7 +138,7 @@ func (am *AuthManager) Login(ctx context.Context, data *proto.ReqUserData) (*pro
 		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("no user with such login: %s", data.Login))
 	}
 	if !user.passwordIsValid(data.Password) {
-		return nil, status.Errorf(codes.Unauthenticated,"invalid password")
+		return nil, status.Errorf(codes.Unauthenticated, "invalid password")
 	}
 
 	am.loginUsers[user.id] = user
@@ -149,7 +153,7 @@ func (am *AuthManager) Login(ctx context.Context, data *proto.ReqUserData) (*pro
 func (am *AuthManager) Logout(ctx context.Context, req *proto.AccessToken) (*proto.Nothing, error) {
 	userID, err := userIDFromToken(req.AccessToken, am.config.accessKey)
 	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, err.Error())
+		return nil, status.Errorf(codes.Unauthenticated, fmt.Sprintf("parse token err: %v", err))
 	}
 
 	am.logoutByID(userID)
@@ -160,7 +164,7 @@ func (am *AuthManager) Logout(ctx context.Context, req *proto.AccessToken) (*pro
 func (am *AuthManager) Info(ctx context.Context, req *proto.AccessToken) (*proto.RespUserData, error) {
 	userID, err := userIDFromToken(req.AccessToken, am.config.accessKey)
 	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, err.Error())
+		return nil, status.Errorf(codes.Unauthenticated, fmt.Sprintf("parse token err: %v", err))
 	}
 	user, ok := am.userIsLogin(userID)
 	if !ok {
@@ -168,7 +172,7 @@ func (am *AuthManager) Info(ctx context.Context, req *proto.AccessToken) (*proto
 	}
 
 	return &proto.RespUserData{
-		Id: user.id,
+		Id:    user.id,
 		Login: user.login,
 		Admin: user.admin,
 	}, nil
@@ -177,11 +181,11 @@ func (am *AuthManager) Info(ctx context.Context, req *proto.AccessToken) (*proto
 func (am *AuthManager) RefreshTokens(ctx context.Context, req *proto.RefreshToken) (*proto.Tokens, error) {
 	userID, err := userIDFromToken(req.RefreshToken, am.config.refreshKey)
 	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, err.Error())
+		return nil, status.Errorf(codes.Unauthenticated, fmt.Sprintf("parse token err: %v", err))
 	}
 	user, ok := am.userIsLogin(userID)
 	if !ok {
-		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("no user found with id: %v", userID))
+		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("no login user found with id: %v", userID))
 	}
 
 	tokens, err := user.refreshTokens(am.config)
@@ -222,11 +226,13 @@ func (ms *MainServer) unaryInterceptor(
 ) (interface{}, error) {
 	reply, err := handler(ctx, req)
 
+	//if err == nil request is success
 	success := false
 	if err == nil {
 		success = true
 	}
 
+	//get login from request if it exist
 	var login string
 	if userData, ok := req.(*proto.ReqUserData); ok {
 		login = userData.Login
@@ -234,15 +240,9 @@ func (ms *MainServer) unaryInterceptor(
 
 	ms.loggingBroadcast <- &proto.Event{
 		Method:  info.FullMethod,
-		Login: login,
+		Login:   login,
 		Success: success,
 	}
-
-	/*fmt.Printf(`---
-	info=%v
-	req=%#v
-	err=%v
-	`,info.FullMethod, req, err)*/
 
 	return reply, err
 }
