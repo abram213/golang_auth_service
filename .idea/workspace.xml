@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="05772eb4-0c3b-4796-826b-311fe604853f" name="Default Changelist" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Go File" />
+      </list>
+    </option>
+  </component>
+  <component name="GOROOT" path="/usr/local/go" />
+  <component name="GoLibraries">
+    <option name="indexEntireGoPath" value="false" />
+  </component>
+  <component name="ProjectId" id="1hEDGuR78eHcdteLv2yd55jVuXF" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="DefaultGoTemplateProperty" value="Go File" />
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="go.import.settings.migrated" value="true" />
+    <property name="go.sdk.automatically.set" value="true" />
+    <property name="go.tried.to.enable.integration.vgo.integrator" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/auth_service" />
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/auth_service" />
+      <recent name="$PROJECT_DIR$/proto" />
+    </key>
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/auth_service" />
+      <recent name="$PROJECT_DIR$" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Go Test.TestLogging in auth/auth_service (1)">
+    <configuration name="go build auth/auth_service" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+      <module name="auth_microservise" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="PACKAGE" />
+      <filePath value="$PROJECT_DIR$/auth_service/main.go" />
+      <package value="auth/auth_service" />
+      <directory value="$PROJECT_DIR$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestLogging in auth/auth_service (1)" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="auth_microservise" />
+      <working_directory value="$PROJECT_DIR$/auth_service" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="auth/auth_service" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <pattern value="^\QTestLogging\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestLogging in auth/auth_service" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="auth_microservise" />
+      <working_directory value="$PROJECT_DIR$/auth_service" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="auth/auth_service" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <pattern value="^\QTestLogging\E$" />
+      <method v="2" />
+    </configuration>
+    <configuration name="TestServerStartStop in auth/auth_service" type="GoTestRunConfiguration" factoryName="Go Test" temporary="true" nameIsGenerated="true">
+      <module name="auth_microservise" />
+      <working_directory value="$PROJECT_DIR$/auth_service" />
+      <framework value="gotest" />
+      <kind value="PACKAGE" />
+      <package value="auth/auth_service" />
+      <directory value="$PROJECT_DIR$" />
+      <filePath value="$PROJECT_DIR$" />
+      <pattern value="^\QTestServerStartStop\E$" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Go Test.TestLogging in auth/auth_service (1)" />
+        <item itemvalue="Go Test.TestLogging in auth/auth_service" />
+        <item itemvalue="Go Test.TestServerStartStop in auth/auth_service" />
+        <item itemvalue="Go Build.go build auth/auth_service" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VgoProject">
+    <integration-enabled>true</integration-enabled>
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="520" y="290" key="#Go_Modules" timestamp="1599573955722">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state x="520" y="290" key="#Go_Modules/0.0.1440.900@0.0.1440.900" timestamp="1599573955722" />
+    <state x="184" y="112" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1599567957880">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state x="184" y="112" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.0.1440.900@0.0.1440.900" timestamp="1599567957880" />
+    <state width="1398" height="250" key="GridCell.Tab.0.bottom" timestamp="1599653104894">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state width="1398" height="250" key="GridCell.Tab.0.bottom/0.0.1440.900@0.0.1440.900" timestamp="1599653104894" />
+    <state width="1398" height="250" key="GridCell.Tab.0.center" timestamp="1599653104891">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state width="1398" height="250" key="GridCell.Tab.0.center/0.0.1440.900@0.0.1440.900" timestamp="1599653104891" />
+    <state width="1398" height="250" key="GridCell.Tab.0.left" timestamp="1599653104890">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state width="1398" height="250" key="GridCell.Tab.0.left/0.0.1440.900@0.0.1440.900" timestamp="1599653104890" />
+    <state width="1398" height="250" key="GridCell.Tab.0.right" timestamp="1599653104892">
+      <screen x="0" y="0" width="1440" height="900" />
+    </state>
+    <state width="1398" height="250" key="GridCell.Tab.0.right/0.0.1440.900@0.0.1440.900" timestamp="1599653104892" />
+  </component>
+</project>
