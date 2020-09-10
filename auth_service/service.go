@@ -20,11 +20,10 @@ type MainServer struct {
 	*AdminManager
 }
 
-//AuthManager contains jwt config and fields to store users
+//AuthManager contains jwt config and slice to store users
 type AuthManager struct {
-	registeredUsers map[string]user
-	loginUsers      map[string]user
-	config          jwtConfig
+	users  []user
+	config jwtConfig
 }
 
 //AdminManager contains channels to store logging connections
@@ -42,9 +41,7 @@ func newMainServer(ctx context.Context, config jwtConfig) *MainServer {
 	logB := make(chan *proto.Event)
 	return &MainServer{
 		&AuthManager{
-			config:          config,
-			registeredUsers: map[string]user{},
-			loginUsers:      map[string]user{},
+			config: config,
 		},
 		&AdminManager{
 			mu:               &sync.RWMutex{},
@@ -105,7 +102,7 @@ func startService(ctx context.Context, addr string, config jwtConfig) error {
 }
 
 func (am *AuthManager) Register(ctx context.Context, data *proto.ReqUserData) (*proto.Tokens, error) {
-	if _, ok := am.userIsRegistered(data.Login); ok {
+	if _, ok := am.userByLogin(data.Login); ok {
 		return nil, status.Errorf(codes.AlreadyExists, "user with such login already exist")
 	}
 
@@ -121,8 +118,7 @@ func (am *AuthManager) Register(ctx context.Context, data *proto.ReqUserData) (*
 		return nil, status.Errorf(codes.Internal, fmt.Sprintf("generating id err: %v", err))
 	}
 
-	am.registeredUsers[data.Login] = user
-	am.loginUsers[user.id] = user
+	am.users = append(am.users, user)
 
 	tokens, err := user.refreshTokens(am.config)
 	if err != nil {
@@ -133,15 +129,13 @@ func (am *AuthManager) Register(ctx context.Context, data *proto.ReqUserData) (*
 }
 
 func (am *AuthManager) Login(ctx context.Context, data *proto.ReqUserData) (*proto.Tokens, error) {
-	user, ok := am.userIsRegistered(data.Login)
+	user, ok := am.userByLogin(data.Login)
 	if !ok {
 		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("no user with such login: %s", data.Login))
 	}
 	if !user.passwordIsValid(data.Password) {
 		return nil, status.Errorf(codes.Unauthenticated, "invalid password")
 	}
-
-	am.loginUsers[user.id] = user
 
 	tokens, err := user.refreshTokens(am.config)
 	if err != nil {
@@ -150,23 +144,12 @@ func (am *AuthManager) Login(ctx context.Context, data *proto.ReqUserData) (*pro
 	return tokens, nil
 }
 
-func (am *AuthManager) Logout(ctx context.Context, req *proto.AccessToken) (*proto.Nothing, error) {
-	userID, err := userIDFromToken(req.AccessToken, am.config.accessKey)
-	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, fmt.Sprintf("parse token err: %v", err))
-	}
-
-	am.logoutByID(userID)
-
-	return &proto.Nothing{}, nil
-}
-
 func (am *AuthManager) Info(ctx context.Context, req *proto.AccessToken) (*proto.RespUserData, error) {
 	userID, err := userIDFromToken(req.AccessToken, am.config.accessKey)
 	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, fmt.Sprintf("parse token err: %v", err))
 	}
-	user, ok := am.userIsLogin(userID)
+	user, ok := am.userByID(userID)
 	if !ok {
 		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("no user found with id: %v", userID))
 	}
@@ -183,7 +166,7 @@ func (am *AuthManager) RefreshTokens(ctx context.Context, req *proto.RefreshToke
 	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, fmt.Sprintf("parse token err: %v", err))
 	}
-	user, ok := am.userIsLogin(userID)
+	user, ok := am.userByID(userID)
 	if !ok {
 		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("no login user found with id: %v", userID))
 	}
@@ -280,20 +263,20 @@ func (ms *MainServer) keyFromCtx(ctx context.Context) (string, error) {
 	return mdValues[0], nil
 }
 
-func (am *AuthManager) userIsRegistered(login string) (user, bool) {
-	if user, ok := am.registeredUsers[login]; ok {
-		return user, true
+func (am *AuthManager) userByLogin(login string) (user, bool) {
+	for _, user := range am.users {
+		if user.login == login {
+			return user, true
+		}
 	}
 	return user{}, false
 }
 
-func (am *AuthManager) userIsLogin(id string) (user, bool) {
-	if user, ok := am.loginUsers[id]; ok {
-		return user, true
+func (am *AuthManager) userByID(id string) (user, bool) {
+	for _, user := range am.users {
+		if user.id == id {
+			return user, true
+		}
 	}
 	return user{}, false
-}
-
-func (am *AuthManager) logoutByID(id string) {
-	delete(am.loginUsers, id)
 }

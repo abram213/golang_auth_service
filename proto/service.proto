@@ -49,7 +49,6 @@ message RefreshToken {
 service Auth {
     rpc Register(ReqUserData) returns(Tokens) {}
     rpc Login(ReqUserData) returns(Tokens) {}
-    rpc Logout(AccessToken) returns(Nothing) {}
     rpc Info(AccessToken) returns(RespUserData) {}
     rpc RefreshTokens(RefreshToken) returns(Tokens) {}
 }
