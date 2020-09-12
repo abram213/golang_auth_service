@@ -98,11 +98,10 @@ func userIDFromToken(tokenString string, key string) (string, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &userClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(key), nil
 	})
-
-	if !token.Valid {
+	if err != nil {
 		if ve, ok := err.(*jwt.ValidationError); ok {
 			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
-				return "", fmt.Errorf("bad token")
+				return "", fmt.Errorf("couldn't parse token")
 			} else if ve.Errors&(jwt.ValidationErrorExpired|jwt.ValidationErrorNotValidYet) != 0 {
 				// Token is either expired or not active yet
 				return "", fmt.Errorf("token is either expired or not active yet")
@@ -113,8 +112,8 @@ func userIDFromToken(tokenString string, key string) (string, error) {
 	}
 
 	claims, ok := token.Claims.(*userClaims)
-	if !ok {
-		return "", fmt.Errorf("can`t parse token claims")
+	if !ok || claims.ID == "" {
+		return "", fmt.Errorf("claims bad structure or user id is not set")
 	}
 	return claims.ID, nil
 }

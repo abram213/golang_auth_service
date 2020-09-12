@@ -59,7 +59,7 @@ func startService(ctx context.Context, addr string, config jwtConfig) error {
 
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
-		return err
+		return fmt.Errorf("listening %s err: %v", addr, err)
 	}
 
 	server := grpc.NewServer(
@@ -147,7 +147,7 @@ func (am *AuthManager) Login(ctx context.Context, data *proto.ReqUserData) (*pro
 func (am *AuthManager) Info(ctx context.Context, req *proto.AccessToken) (*proto.RespUserData, error) {
 	userID, err := userIDFromToken(req.AccessToken, am.config.accessKey)
 	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, fmt.Sprintf("parse token err: %v", err))
+		return nil, status.Errorf(codes.Unauthenticated, fmt.Sprintf("extracting user id from token err: %v", err))
 	}
 	user, ok := am.userByID(userID)
 	if !ok {
@@ -164,11 +164,11 @@ func (am *AuthManager) Info(ctx context.Context, req *proto.AccessToken) (*proto
 func (am *AuthManager) RefreshTokens(ctx context.Context, req *proto.RefreshToken) (*proto.Tokens, error) {
 	userID, err := userIDFromToken(req.RefreshToken, am.config.refreshKey)
 	if err != nil {
-		return nil, status.Errorf(codes.Unauthenticated, fmt.Sprintf("parse token err: %v", err))
+		return nil, status.Errorf(codes.Unauthenticated, fmt.Sprintf("extracting user id from token err: %v", err))
 	}
 	user, ok := am.userByID(userID)
 	if !ok {
-		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("no login user found with id: %v", userID))
+		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("no user found with id: %v", userID))
 	}
 
 	tokens, err := user.refreshTokens(am.config)
