@@ -1,6 +1,8 @@
-package main
+package service
 
 import (
+	"auth/auth_service/app"
+	"auth/auth_service/config"
 	"auth/proto"
 	"context"
 	"fmt"
@@ -20,10 +22,10 @@ const (
 	refreshKey string = "refresh_test_key"
 )
 
-func initTestConfig() jwtConfig {
-	return jwtConfig{
-		accessKey:  accessKey,
-		refreshKey: refreshKey,
+func initTestConfig() *config.Config {
+	return &config.Config{
+		AccessKey:  accessKey,
+		RefreshKey: refreshKey,
 	}
 }
 
@@ -52,8 +54,8 @@ func adminCtx() context.Context {
 //checking is server success start/stop and release port
 func TestServerStartStop(t *testing.T) {
 	ctx, finish := context.WithCancel(context.Background())
-	config := initTestConfig()
-	err := startService(ctx, addr, config)
+	conf := initTestConfig()
+	err := StartService(ctx, addr, conf)
 	if err != nil {
 		t.Fatalf("cant start server initial: %v", err)
 	}
@@ -62,7 +64,7 @@ func TestServerStartStop(t *testing.T) {
 	wait(1)
 
 	ctx, finish = context.WithCancel(context.Background())
-	err = startService(ctx, addr, config)
+	err = StartService(ctx, addr, conf)
 	if err != nil {
 		t.Fatalf("cant start server again: %v", err)
 	}
@@ -73,8 +75,8 @@ func TestServerStartStop(t *testing.T) {
 
 func TestServerStartError(t *testing.T) {
 	ctx := context.Background()
-	config := initTestConfig()
-	err := startService(ctx, "bad_addr:8081", config)
+	conf := initTestConfig()
+	err := StartService(ctx, "bad_addr:8081", conf)
 	if err == nil {
 		t.Fatalf("expected error got %v", err)
 	}
@@ -83,8 +85,8 @@ func TestServerStartError(t *testing.T) {
 //check if we can connect more than 1 logger and receive equal logs
 func TestMultipleLogging(t *testing.T) {
 	ctx, finish := context.WithCancel(context.Background())
-	config := initTestConfig()
-	err := startService(ctx, addr, config)
+	conf := initTestConfig()
+	err := StartService(ctx, addr, conf)
 	if err != nil {
 		t.Fatalf("cant start server initial: %v", err)
 	}
@@ -208,8 +210,8 @@ func TestMultipleLogging(t *testing.T) {
 
 func TestAuthMethodsSuccess(t *testing.T) {
 	ctx, finish := context.WithCancel(context.Background())
-	config := initTestConfig()
-	err := startService(ctx, addr, config)
+	conf := initTestConfig()
+	err := StartService(ctx, addr, conf)
 	if err != nil {
 		t.Fatalf("cant start server initial: %v", err)
 	}
@@ -261,8 +263,8 @@ func TestAuthMethodsSuccess(t *testing.T) {
 
 func TestRegisterAlreadyExistErr(t *testing.T) {
 	ctx, finish := context.WithCancel(context.Background())
-	config := initTestConfig()
-	err := startService(ctx, addr, config)
+	conf := initTestConfig()
+	err := StartService(ctx, addr, conf)
 	if err != nil {
 		t.Fatalf("cant start server initial: %v", err)
 	}
@@ -304,8 +306,8 @@ func TestRegisterAlreadyExistErr(t *testing.T) {
 
 func TestLoginErrors(t *testing.T) {
 	ctx, finish := context.WithCancel(context.Background())
-	config := initTestConfig()
-	err := startService(ctx, addr, config)
+	conf := initTestConfig()
+	err := StartService(ctx, addr, conf)
 	if err != nil {
 		t.Fatalf("cant start server initial: %v", err)
 	}
@@ -365,10 +367,10 @@ func TestLoginErrors(t *testing.T) {
 
 func TestInfoErrors(t *testing.T) {
 	ctx, finish := context.WithCancel(context.Background())
-	config := jwtConfig{
-		accessKey: accessKey,
+	conf := &config.Config{
+		AccessKey: accessKey,
 	}
-	err := startService(ctx, addr, config)
+	err := StartService(ctx, addr, conf)
 	if err != nil {
 		t.Fatalf("cant start server initial: %v", err)
 	}
@@ -386,7 +388,7 @@ func TestInfoErrors(t *testing.T) {
 	//generate valid token with unknown user id
 	userID := "unknown_user_id"
 	exp := time.Now().Add(time.Minute * time.Duration(5)).Unix()
-	claims := userClaims{
+	claims := app.UserClaims{
 		userID,
 		false,
 		jwt.StandardClaims{
@@ -436,10 +438,10 @@ func TestInfoErrors(t *testing.T) {
 
 func TestRefreshTokensErrors(t *testing.T) {
 	ctx, finish := context.WithCancel(context.Background())
-	config := jwtConfig{
-		refreshKey: refreshKey,
+	conf := &config.Config{
+		RefreshKey: refreshKey,
 	}
-	err := startService(ctx, addr, config)
+	err := StartService(ctx, addr, conf)
 	if err != nil {
 		t.Fatalf("cant start server initial: %v", err)
 	}
@@ -457,10 +459,10 @@ func TestRefreshTokensErrors(t *testing.T) {
 	//generate valid token with unknown user id
 	userID := "unknown_user_id"
 	exp := time.Now().Add(time.Minute * time.Duration(5)).Unix()
-	claims := userClaims{
-		userID,
-		false,
-		jwt.StandardClaims{
+	claims := app.UserClaims{
+		ID:    userID,
+		Admin: false,
+		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: exp,
 		},
 	}

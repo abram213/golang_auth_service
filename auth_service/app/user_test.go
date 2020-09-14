@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"github.com/dgrijalva/jwt-go"
@@ -8,14 +8,14 @@ import (
 
 func TestHashAndCheckPassword(t *testing.T) {
 	pass := "user_password"
-	user := user{
-		passwordHash: pass,
+	user := User{
+		PasswordHash: pass,
 	}
 
-	if err := user.hashPassword(); err != nil {
+	if err := user.HashPassword(); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	if !user.passwordIsValid(pass) {
+	if !user.PasswordIsValid(pass) {
 		t.Errorf("user password hash invalid")
 	}
 }
@@ -25,7 +25,7 @@ func TestUserIDFromToken(t *testing.T) {
 	userID := "test_user_id"
 
 	exp := time.Now().Add(time.Minute * time.Duration(5)).Unix()
-	claims := userClaims{
+	claims := UserClaims{
 		userID,
 		false,
 		jwt.StandardClaims{
@@ -40,7 +40,7 @@ func TestUserIDFromToken(t *testing.T) {
 		return
 	}
 
-	tUserID, err := userIDFromToken(token, key)
+	tUserID, err := UserIDFromToken(token, key)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestUserIDFromTokenErrors(t *testing.T) {
 	key := "test_key"
 
 	expired := time.Now().Add(time.Minute * time.Duration(-1)).Unix()
-	claims := userClaims{
+	claims := UserClaims{
 		"test",
 		false,
 		jwt.StandardClaims{
@@ -99,7 +99,7 @@ func TestUserIDFromTokenErrors(t *testing.T) {
 	}
 
 	for i, c := range cases {
-		_, err := userIDFromToken(c.token, key)
+		_, err := UserIDFromToken(c.token, key)
 		if err == nil {
 			t.Errorf("[%v] expected error, got: %v", i, err)
 			return

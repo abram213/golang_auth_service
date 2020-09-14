@@ -1,6 +1,7 @@
-package main
+package app
 
 import (
+	"auth/auth_service/config"
 	"auth/proto"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
@@ -9,27 +10,27 @@ import (
 	"time"
 )
 
-type user struct {
-	id           string
-	login        string
-	passwordHash string
-	admin        bool
+type User struct {
+	ID           string
+	Login        string
+	PasswordHash string
+	Admin        bool
 }
 
-type userClaims struct {
+type UserClaims struct {
 	ID    string `json:"id"`
 	Admin bool   `json:"admin"`
 	jwt.StandardClaims
 }
 
-//refreshTokens generate new user access and refresh tokens
-func (u *user) refreshTokens(config jwtConfig) (*proto.Tokens, error) {
-	aToken, aExp, err := u.genToken([]byte(config.accessKey), config.accessExpMin)
+//RefreshTokens generate new user access and refresh tokens
+func (u *User) RefreshTokens(config *config.Config) (*proto.Tokens, error) {
+	aToken, aExp, err := u.genToken([]byte(config.AccessKey), config.AccessExpMin)
 	if err != nil {
 		return nil, fmt.Errorf("generate access token error: %v", err)
 	}
 
-	rToken, _, err := u.genToken([]byte(config.refreshKey), config.refreshExpMin)
+	rToken, _, err := u.genToken([]byte(config.RefreshKey), config.RefreshExpMin)
 	if err != nil {
 		return nil, fmt.Errorf("generate refresh token error: %v", err)
 	}
@@ -41,41 +42,41 @@ func (u *user) refreshTokens(config jwtConfig) (*proto.Tokens, error) {
 	}, nil
 }
 
-//hashPassword hashes user password
-func (u *user) hashPassword() error {
-	hashedPass, err := bcrypt.GenerateFromPassword([]byte(u.passwordHash), bcrypt.DefaultCost)
+//HashPassword hashes user password
+func (u *User) HashPassword() error {
+	hashedPass, err := bcrypt.GenerateFromPassword([]byte(u.PasswordHash), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
-	u.passwordHash = string(hashedPass)
+	u.PasswordHash = string(hashedPass)
 	return nil
 }
 
-//passwordIsValid check user password
-func (u *user) passwordIsValid(password string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(u.passwordHash), []byte(password))
+//PasswordIsValid check user password
+func (u *User) PasswordIsValid(password string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password))
 	return err == nil
 }
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ*#$^&@!")
 
-//generateID generates user id
-func (u *user) generateID() error {
+//GenerateID generates user id
+func (u *User) GenerateID() error {
 	rand.Seed(time.Now().UnixNano())
 	id := make([]rune, 30)
 	for i := range id {
 		id[i] = letters[rand.Intn(len(letters))]
 	}
-	u.id = string(id)
+	u.ID = string(id)
 	return nil
 }
 
-func (u *user) genToken(key []byte, expMin int) (string, int64, error) {
+func (u *User) genToken(key []byte, expMin int) (string, int64, error) {
 	//set claims
 	exp := time.Now().Add(time.Minute * time.Duration(expMin)).Unix()
-	claims := userClaims{
-		u.id,
-		u.admin,
+	claims := UserClaims{
+		u.ID,
+		u.Admin,
 		jwt.StandardClaims{
 			ExpiresAt: exp,
 		},
@@ -93,9 +94,9 @@ func generateToken(key []byte, claims jwt.Claims) (string, error) {
 	return token.SignedString(key)
 }
 
-//userIDFromToken parse token string, validate and get user id from claims
-func userIDFromToken(tokenString string, key string) (string, error) {
-	token, err := jwt.ParseWithClaims(tokenString, &userClaims{}, func(token *jwt.Token) (interface{}, error) {
+//UserIDFromToken parse token string, validate and get user id from claims
+func UserIDFromToken(tokenString string, key string) (string, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(key), nil
 	})
 	if err != nil {
@@ -111,7 +112,7 @@ func userIDFromToken(tokenString string, key string) (string, error) {
 		}
 	}
 
-	claims, ok := token.Claims.(*userClaims)
+	claims, ok := token.Claims.(*UserClaims)
 	if !ok || claims.ID == "" {
 		return "", fmt.Errorf("claims bad structure or user id is not set")
 	}

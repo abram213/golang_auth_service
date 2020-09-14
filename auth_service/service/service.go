@@ -1,6 +1,8 @@
-package main
+package service
 
 import (
+	"auth/auth_service/app"
+	"auth/auth_service/config"
 	"auth/proto"
 	"context"
 	"errors"
@@ -22,8 +24,8 @@ type MainServer struct {
 
 //AuthManager contains jwt config and slice to store users
 type AuthManager struct {
-	users  []user
-	config jwtConfig
+	users  []app.User
+	config *config.Config
 }
 
 //AdminManager contains channels to store logging connections
@@ -36,7 +38,7 @@ type AdminManager struct {
 }
 
 //newMainServer create new MainServer entity
-func newMainServer(ctx context.Context, config jwtConfig) *MainServer {
+func newMainServer(ctx context.Context, config *config.Config) *MainServer {
 	var logLs []chan *proto.Event
 	logB := make(chan *proto.Event)
 	return &MainServer{
@@ -53,7 +55,7 @@ func newMainServer(ctx context.Context, config jwtConfig) *MainServer {
 }
 
 //startService start gRPC server
-func startService(ctx context.Context, addr string, config jwtConfig) error {
+func StartService(ctx context.Context, addr string, config *config.Config) error {
 	g, ctx := errgroup.WithContext(ctx)
 	ms := newMainServer(ctx, config)
 
@@ -106,21 +108,21 @@ func (am *AuthManager) Register(ctx context.Context, data *proto.ReqUserData) (*
 		return nil, status.Errorf(codes.AlreadyExists, "user with such login already exist")
 	}
 
-	user := user{
-		login:        data.Login,
-		passwordHash: data.Password,
-		admin:        false,
+	user := app.User{
+		Login:        data.Login,
+		PasswordHash: data.Password,
+		Admin:        false,
 	}
-	if err := user.hashPassword(); err != nil {
+	if err := user.HashPassword(); err != nil {
 		return nil, status.Errorf(codes.Internal, fmt.Sprintf("hashing password err: %v", err))
 	}
-	if err := user.generateID(); err != nil {
+	if err := user.GenerateID(); err != nil {
 		return nil, status.Errorf(codes.Internal, fmt.Sprintf("generating id err: %v", err))
 	}
 
 	am.users = append(am.users, user)
 
-	tokens, err := user.refreshTokens(am.config)
+	tokens, err := user.RefreshTokens(am.config)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, fmt.Sprintf("refresh user tokens err: %v", err))
 	}
@@ -133,11 +135,11 @@ func (am *AuthManager) Login(ctx context.Context, data *proto.ReqUserData) (*pro
 	if !ok {
 		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("no user with such login: %s", data.Login))
 	}
-	if !user.passwordIsValid(data.Password) {
+	if !user.PasswordIsValid(data.Password) {
 		return nil, status.Errorf(codes.Unauthenticated, "invalid password")
 	}
 
-	tokens, err := user.refreshTokens(am.config)
+	tokens, err := user.RefreshTokens(am.config)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, fmt.Sprintf("refresh user tokens err: %v", err))
 	}
@@ -145,7 +147,7 @@ func (am *AuthManager) Login(ctx context.Context, data *proto.ReqUserData) (*pro
 }
 
 func (am *AuthManager) Info(ctx context.Context, req *proto.AccessToken) (*proto.RespUserData, error) {
-	userID, err := userIDFromToken(req.AccessToken, am.config.accessKey)
+	userID, err := app.UserIDFromToken(req.AccessToken, am.config.AccessKey)
 	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, fmt.Sprintf("extracting user id from token err: %v", err))
 	}
@@ -155,14 +157,14 @@ func (am *AuthManager) Info(ctx context.Context, req *proto.AccessToken) (*proto
 	}
 
 	return &proto.RespUserData{
-		Id:    user.id,
-		Login: user.login,
-		Admin: user.admin,
+		Id:    user.ID,
+		Login: user.Login,
+		Admin: user.Admin,
 	}, nil
 }
 
 func (am *AuthManager) RefreshTokens(ctx context.Context, req *proto.RefreshToken) (*proto.Tokens, error) {
-	userID, err := userIDFromToken(req.RefreshToken, am.config.refreshKey)
+	userID, err := app.UserIDFromToken(req.RefreshToken, am.config.RefreshKey)
 	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, fmt.Sprintf("extracting user id from token err: %v", err))
 	}
@@ -171,7 +173,7 @@ func (am *AuthManager) RefreshTokens(ctx context.Context, req *proto.RefreshToke
 		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("no user found with id: %v", userID))
 	}
 
-	tokens, err := user.refreshTokens(am.config)
+	tokens, err := user.RefreshTokens(am.config)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, fmt.Sprintf("refresh user tokens err: %v", err))
 	}
@@ -263,20 +265,20 @@ func (ms *MainServer) keyFromCtx(ctx context.Context) (string, error) {
 	return mdValues[0], nil
 }
 
-func (am *AuthManager) userByLogin(login string) (user, bool) {
+func (am *AuthManager) userByLogin(login string) (app.User, bool) {
 	for _, user := range am.users {
-		if user.login == login {
+		if user.Login == login {
 			return user, true
 		}
 	}
-	return user{}, false
+	return app.User{}, false
 }
 
-func (am *AuthManager) userByID(id string) (user, bool) {
+func (am *AuthManager) userByID(id string) (app.User, bool) {
 	for _, user := range am.users {
-		if user.id == id {
+		if user.ID == id {
 			return user, true
 		}
 	}
-	return user{}, false
+	return app.User{}, false
 }
