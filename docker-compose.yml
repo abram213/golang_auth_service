@@ -24,8 +24,6 @@ services:
       - auth_service/.env
     environment:
       - HOST=auth_service
-
-# Networks to be created to facilitate communication between containers
 networks:
   fullstack:
     driver: bridge
