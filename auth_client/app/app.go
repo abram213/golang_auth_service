@@ -1,10 +1,10 @@
 package app
 
 import (
-	"auth/auth_client/api"
-	agc "auth/auth_client/auth_grpc_conn"
-	"auth/auth_client/config"
-	"auth/auth_client/logger"
+	"auth_client/api"
+	agc "auth_client/auth_grpc_conn"
+	"auth_client/config"
+	"auth_client/logger"
 	"log"
 )
 
@@ -21,7 +21,8 @@ func New(conf *config.Config, log logger.Logger) (*App, error) {
 }
 
 func (a *App) Run() {
-	authConn, err := agc.New(a.Config.AuthGRPCPort)
+	addr := a.Config.AuthHost + ":" + a.Config.AuthPort
+	authConn, err := agc.New(addr)
 	if err != nil {
 		//to logger
 		log.Fatalf("can't connect to auth grpc: %v", err)

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"auth/auth_client/app"
-	"auth/auth_client/config"
+	"auth_client/app"
+	"auth_client/config"
 	"log"
 	"os"
 )
@@ -14,7 +14,6 @@ import (
 //	add handling errors in one place.
 
 func main() {
-
 	logger := log.New(os.Stdout, "TEST: ", log.Lshortfile)
 
 	conf, err := config.New(".env")

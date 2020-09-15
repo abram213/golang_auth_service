@@ -1,9 +1,9 @@
 package service
 
 import (
-	"auth/auth_service/app"
-	"auth/auth_service/config"
-	"auth/proto"
+	"auth_service/app"
+	"auth_service/config"
+	"auth_service/proto"
 	"context"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"

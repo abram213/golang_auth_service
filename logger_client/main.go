@@ -1,12 +1,12 @@
 package main
 
 import (
-	"auth/proto"
 	"context"
 	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"log"
+	"logger_client/proto"
 	"sync"
 )
 

@@ -1,7 +1,7 @@
 package api
 
 import (
-	"auth/proto"
+	"auth_client/proto"
 	"context"
 	"encoding/json"
 	"io/ioutil"

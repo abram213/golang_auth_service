@@ -6,18 +6,10 @@ import (
 	"os"
 )
 
-type DB struct {
-	User string
-	Pass string
-	Name string
-	Host string
-	Port string
-}
-
 type Config struct {
-	Port         string
-	AuthGRPCPort string
-	Db           DB
+	HttpPort string
+	AuthPort string
+	AuthHost string
 }
 
 func New(envPath string) (*Config, error) {
@@ -26,15 +18,9 @@ func New(envPath string) (*Config, error) {
 	}
 
 	config := &Config{
-		Port:         getEnv("HTTP_PORT", "8080"),
-		AuthGRPCPort: getEnv("AUTH_GRPC_PORT", ""),
-		Db: DB{
-			Host: getEnv("DB_HOST", "8080"),
-			User: getEnv("DB_USER", "8080"),
-			Pass: getEnv("DB_PASSWORD", "8080"),
-			Name: getEnv("DB_NAME", "8080"),
-			Port: getEnv("DB_PORT", "8080"),
-		},
+		HttpPort: getEnv("HTTP_PORT", "8082"),
+		AuthPort: getEnv("AUTH_PORT", "8081"),
+		AuthHost: getEnv("AUTH_HOST", ""),
 	}
 	return config, nil
 }

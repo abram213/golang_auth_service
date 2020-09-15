@@ -1,0 +1,31 @@
+version: '3'
+services:
+  app:
+    container_name: auth_client
+    build: auth_client
+    ports:
+      - "8082:8082"
+    restart: on-failure
+    depends_on:
+      - auth_service
+    networks:
+      - fullstack
+    env_file:
+      - auth_client/.env
+    environment:
+      - AUTH_HOST=auth_service
+  auth_service:
+    container_name: auth_service
+    build: auth_service
+    restart: on-failure
+    networks:
+      - fullstack
+    env_file:
+      - auth_service/.env
+    environment:
+      - HOST=auth_service
+
+# Networks to be created to facilitate communication between containers
+networks:
+  fullstack:
+    driver: bridge

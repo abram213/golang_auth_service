@@ -1,8 +1,8 @@
 package main
 
 import (
-	"auth/auth_service/config"
-	"auth/auth_service/service"
+	"auth_service/config"
+	"auth_service/service"
 	"context"
 	"log"
 	"os"
@@ -13,7 +13,6 @@ import (
 //todo: write tests
 
 func main() {
-	addr := "127.0.0.1:8081"
 	ctx, finish := context.WithCancel(context.Background())
 
 	conf, err := config.InitConfig(".env")
@@ -32,6 +31,7 @@ func main() {
 		log.Fatalln("signal caught. shutting down...")
 	}(wg)
 
+	addr := conf.Host + ":" + conf.Port
 	if err := service.StartService(ctx, addr, conf); err != nil {
 		log.Fatalf("can`t start server: %v", err)
 	}

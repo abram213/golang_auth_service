@@ -1,8 +1,8 @@
 package app
 
 import (
-	"auth/auth_service/config"
-	"auth/proto"
+	"auth_service/config"
+	"auth_service/proto"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"

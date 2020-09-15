@@ -1,9 +1,9 @@
 package api
 
 import (
-	"auth/auth_client/config"
-	"auth/auth_client/logger"
-	"auth/proto"
+	"auth_client/config"
+	"auth_client/logger"
+	"auth_client/proto"
 	"context"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -25,7 +25,7 @@ type Api struct {
 func NewAPI(authConn proto.AuthClient, log logger.Logger, conf *config.Config) *Api {
 	a := &Api{
 		log,
-		conf.Port,
+		conf.HttpPort,
 		conf,
 		chi.NewMux(),
 		authConn,
@@ -37,7 +37,7 @@ func NewAPI(authConn proto.AuthClient, log logger.Logger, conf *config.Config) *
 func ServeAPI(api *Api) {
 
 	s := &http.Server{
-		Addr:        "127.0.0.1:" + api.Port,
+		Addr:        ":" + api.Port,
 		Handler:     api.Router,
 		ReadTimeout: 1 * time.Minute,
 	}
@@ -58,7 +58,7 @@ func ServeAPI(api *Api) {
 		close(done)
 	}()
 
-	log.Printf("serving api at http: %s", s.Addr)
+	log.Printf("serving api at http://localhost%s", s.Addr)
 	if err := s.ListenAndServe(); err != http.ErrServerClosed {
 		log.Printf("serving err: %v", err)
 		close(done)
@@ -72,6 +72,9 @@ func (a *Api) InitRouter() {
 	r.Use(middleware.Timeout(20 * time.Second))
 	r.Use(middleware.Recoverer)
 
+	r.MethodFunc("GET", "/", func(w http.ResponseWriter, req *http.Request) {
+		w.Write([]byte("Hello"))
+	})
 	r.MethodFunc("POST", "/register", a.register)
 	a.Router = r
 }

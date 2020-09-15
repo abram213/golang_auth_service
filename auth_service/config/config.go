@@ -13,6 +13,8 @@ type Config struct {
 	RefreshKey    string
 	AccessExpMin  int
 	RefreshExpMin int
+	Port          string
+	Host          string
 }
 
 func InitConfig(envPath string) (*Config, error) {
@@ -25,6 +27,8 @@ func InitConfig(envPath string) (*Config, error) {
 		RefreshKey:    getEnv("REFRESH_KEY", "refresh_key"),
 		AccessExpMin:  getIntEnv("ACCESS_EXP_MIN", 60),
 		RefreshExpMin: getIntEnv("REFRESH_EXP_MIN", 1440),
+		Port:          getEnv("PORT", "8081"),
+		Host:          getEnv("HOST", ""),
 	}
 	return config, nil
 }
