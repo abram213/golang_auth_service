@@ -2,7 +2,7 @@ version: '3'
 services:
   app:
     container_name: auth_client
-    build: auth_client
+    build: ./auth_client
     ports:
       - "8082:8082"
     restart: on-failure
@@ -11,19 +11,49 @@ services:
     networks:
       - fullstack
     env_file:
-      - auth_client/.env
+      - ./auth_client/.env
+    environment:
+      - AUTH_HOST=auth_service
+  logger:
+    container_name: logger_client
+    build: ./logger_client
+    restart: on-failure
+    depends_on:
+      - auth_service
+    networks:
+      - fullstack
+    env_file:
+      - ./logger_client/.env
     environment:
       - AUTH_HOST=auth_service
   auth_service:
     container_name: auth_service
-    build: auth_service
+    build: ./auth_service
     restart: on-failure
+    depends_on:
+      - postgres
     networks:
       - fullstack
     env_file:
-      - auth_service/.env
+      - ./auth_service/.env
     environment:
       - HOST=auth_service
+      - DB_HOST=postgres
+  postgres:
+    image: postgres:latest
+    container_name: db_postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=123456
+      - POSTGRES_DB=postgres
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - 5432:5432
+    volumes:
+      - ./auth_service/migrations:/docker-entrypoint-initdb.d
+      - ./auth_service/postgres_volume:/var/lib/postgresql
+    networks:
+      - fullstack
 networks:
   fullstack:
     driver: bridge
