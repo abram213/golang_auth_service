@@ -6,20 +6,19 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
-	"math/rand"
 	"time"
 )
 
 type User struct {
-	ID           string
+	ID           uint
 	Login        string
 	PasswordHash string
 	Admin        bool
 }
 
 type UserClaims struct {
-	ID    string `json:"id"`
-	Admin bool   `json:"admin"`
+	ID    uint `json:"id"`
+	Admin bool `json:"admin"`
 	jwt.StandardClaims
 }
 
@@ -58,19 +57,6 @@ func (u *User) PasswordIsValid(password string) bool {
 	return err == nil
 }
 
-var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ*#$^&@!")
-
-//GenerateID generates user id
-func (u *User) GenerateID() error {
-	rand.Seed(time.Now().UnixNano())
-	id := make([]rune, 30)
-	for i := range id {
-		id[i] = letters[rand.Intn(len(letters))]
-	}
-	u.ID = string(id)
-	return nil
-}
-
 func (u *User) genToken(key []byte, expMin int) (string, int64, error) {
 	//set claims
 	exp := time.Now().Add(time.Minute * time.Duration(expMin)).Unix()
@@ -95,26 +81,26 @@ func generateToken(key []byte, claims jwt.Claims) (string, error) {
 }
 
 //UserIDFromToken parse token string, validate and get user id from claims
-func UserIDFromToken(tokenString string, key string) (string, error) {
+func UserIDFromToken(tokenString string, key string) (uint, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &UserClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return []byte(key), nil
 	})
 	if err != nil {
 		if ve, ok := err.(*jwt.ValidationError); ok {
 			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
-				return "", fmt.Errorf("couldn't parse token")
+				return 0, fmt.Errorf("couldn't parse token")
 			} else if ve.Errors&(jwt.ValidationErrorExpired|jwt.ValidationErrorNotValidYet) != 0 {
 				// Token is either expired or not active yet
-				return "", fmt.Errorf("token is either expired or not active yet")
+				return 0, fmt.Errorf("token is either expired or not active yet")
 			} else {
-				return "", fmt.Errorf("couldn't handle this token")
+				return 0, fmt.Errorf("couldn't handle this token")
 			}
 		}
 	}
 
 	claims, ok := token.Claims.(*UserClaims)
-	if !ok || claims.ID == "" {
-		return "", fmt.Errorf("claims bad structure or user id is not set")
+	if !ok || claims.ID == 0 {
+		return 0, fmt.Errorf("claims bad structure or user id is not set")
 	}
 	return claims.ID, nil
 }

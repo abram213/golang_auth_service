@@ -15,6 +15,15 @@ type Config struct {
 	RefreshExpMin int
 	Port          string
 	Host          string
+	Db            DbConf
+}
+
+type DbConf struct {
+	Host string
+	User string
+	Pass string
+	Name string
+	Port string
 }
 
 func InitConfig(envPath string) (*Config, error) {
@@ -28,7 +37,14 @@ func InitConfig(envPath string) (*Config, error) {
 		AccessExpMin:  getIntEnv("ACCESS_EXP_MIN", 60),
 		RefreshExpMin: getIntEnv("REFRESH_EXP_MIN", 1440),
 		Port:          getEnv("PORT", "8081"),
-		Host:          getEnv("HOST", ""),
+		Host:          getEnv("HOST", "localhost"),
+		Db: DbConf{
+			Host: getEnv("DB_HOST", "localhost"),
+			User: getEnv("DB_USER", "postgres"),
+			Pass: getEnv("DB_PASSWORD", "123456"),
+			Name: getEnv("DB_NAME", "postgres"),
+			Port: getEnv("DB_PORT", "5432"),
+		},
 	}
 	return config, nil
 }

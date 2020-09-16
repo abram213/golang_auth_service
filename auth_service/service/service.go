@@ -4,6 +4,7 @@ import (
 	"auth_service/app"
 	"auth_service/config"
 	"auth_service/proto"
+	"auth_service/storage"
 	"context"
 	"errors"
 	"fmt"
@@ -24,8 +25,9 @@ type MainServer struct {
 
 //AuthManager contains jwt config and slice to store users
 type AuthManager struct {
-	users  []app.User
-	config *config.Config
+	users   []app.User
+	config  *config.Config
+	storage storage.Storage
 }
 
 //AdminManager contains channels to store logging connections
@@ -38,12 +40,13 @@ type AdminManager struct {
 }
 
 //newMainServer create new MainServer entity
-func newMainServer(ctx context.Context, config *config.Config) *MainServer {
+func newMainServer(ctx context.Context, config *config.Config, db storage.Storage) *MainServer {
 	var logLs []chan *proto.Event
 	logB := make(chan *proto.Event)
 	return &MainServer{
 		&AuthManager{
-			config: config,
+			config:  config,
+			storage: db,
 		},
 		&AdminManager{
 			mu:               &sync.RWMutex{},
@@ -54,10 +57,16 @@ func newMainServer(ctx context.Context, config *config.Config) *MainServer {
 	}
 }
 
-//startService start gRPC server
+//StartService start gRPC server
 func StartService(ctx context.Context, addr string, config *config.Config) error {
+	//connect to db
+	db, err := storage.New(*config)
+	if err != nil {
+		return err
+	}
+
 	g, ctx := errgroup.WithContext(ctx)
-	ms := newMainServer(ctx, config)
+	ms := newMainServer(ctx, config, db)
 
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -104,23 +113,21 @@ func StartService(ctx context.Context, addr string, config *config.Config) error
 }
 
 func (am *AuthManager) Register(ctx context.Context, data *proto.ReqUserData) (*proto.Tokens, error) {
-	if _, ok := am.userByLogin(data.Login); ok {
+	if _, err := am.storage.GetUserByLogin(data.Login); err == nil {
 		return nil, status.Errorf(codes.AlreadyExists, "user with such login already exist")
 	}
 
 	user := app.User{
 		Login:        data.Login,
 		PasswordHash: data.Password,
-		Admin:        false,
 	}
 	if err := user.HashPassword(); err != nil {
 		return nil, status.Errorf(codes.Internal, fmt.Sprintf("hashing password err: %v", err))
 	}
-	if err := user.GenerateID(); err != nil {
-		return nil, status.Errorf(codes.Internal, fmt.Sprintf("generating id err: %v", err))
-	}
 
-	am.users = append(am.users, user)
+	if err := am.storage.CreateUser(&user); err != nil {
+		return nil, status.Errorf(codes.Internal, fmt.Sprintf("create user err: %v", err))
+	}
 
 	tokens, err := user.RefreshTokens(am.config)
 	if err != nil {
@@ -131,9 +138,9 @@ func (am *AuthManager) Register(ctx context.Context, data *proto.ReqUserData) (*
 }
 
 func (am *AuthManager) Login(ctx context.Context, data *proto.ReqUserData) (*proto.Tokens, error) {
-	user, ok := am.userByLogin(data.Login)
-	if !ok {
-		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("no user with such login: %s", data.Login))
+	user, err := am.storage.GetUserByLogin(data.Login)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("get user err: %v", err))
 	}
 	if !user.PasswordIsValid(data.Password) {
 		return nil, status.Errorf(codes.Unauthenticated, "invalid password")
@@ -151,13 +158,13 @@ func (am *AuthManager) Info(ctx context.Context, req *proto.AccessToken) (*proto
 	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, fmt.Sprintf("extracting user id from token err: %v", err))
 	}
-	user, ok := am.userByID(userID)
-	if !ok {
-		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("no user found with id: %v", userID))
+	user, err := am.storage.GetUserByID(userID)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("get user err: %v", err))
 	}
 
 	return &proto.RespUserData{
-		Id:    user.ID,
+		Id:    int64(user.ID),
 		Login: user.Login,
 		Admin: user.Admin,
 	}, nil
@@ -168,9 +175,9 @@ func (am *AuthManager) RefreshTokens(ctx context.Context, req *proto.RefreshToke
 	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, fmt.Sprintf("extracting user id from token err: %v", err))
 	}
-	user, ok := am.userByID(userID)
-	if !ok {
-		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("no user found with id: %v", userID))
+	user, err := am.storage.GetUserByID(userID)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("get user err: %v", err))
 	}
 
 	tokens, err := user.RefreshTokens(am.config)
@@ -187,6 +194,7 @@ func (am *AdminManager) Logging(in *proto.Nothing, alSrv proto.Admin_LoggingServ
 		select {
 		case event := <-ch:
 			if err := alSrv.Send(event); err != nil {
+				//to logger
 				fmt.Printf("err sending logs from chan %v to client: %v", ch, err)
 			}
 		case <-am.ctx.Done():
@@ -263,22 +271,4 @@ func (ms *MainServer) keyFromCtx(ctx context.Context) (string, error) {
 		return "", status.Errorf(codes.Unauthenticated, "no key in context metadata")
 	}
 	return mdValues[0], nil
-}
-
-func (am *AuthManager) userByLogin(login string) (app.User, bool) {
-	for _, user := range am.users {
-		if user.Login == login {
-			return user, true
-		}
-	}
-	return app.User{}, false
-}
-
-func (am *AuthManager) userByID(id string) (app.User, bool) {
-	for _, user := range am.users {
-		if user.ID == id {
-			return user, true
-		}
-	}
-	return app.User{}, false
 }

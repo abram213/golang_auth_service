@@ -11,6 +11,7 @@ import (
 )
 
 //todo: write tests
+// change proto Event structure: add host, status code and etc.
 
 func main() {
 	ctx, finish := context.WithCancel(context.Background())
