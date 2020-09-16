@@ -35,7 +35,6 @@ func NewAPI(authConn proto.AuthClient, log logger.Logger, conf *config.Config) *
 }
 
 func ServeAPI(api *Api) {
-
 	s := &http.Server{
 		Addr:        ":" + api.Port,
 		Handler:     api.Router,
@@ -47,7 +46,6 @@ func ServeAPI(api *Api) {
 		sigCh := make(chan os.Signal, 1)
 
 		signal.Notify(sigCh, os.Interrupt)
-
 		//signal.Notify(sigint, syscall.SIGTERM) // sigterm signal sent from kubernetes, Kubernetes sends a SIGTERM signal which is different from SIGINT (Ctrl+Client).
 
 		<-sigCh
@@ -72,9 +70,9 @@ func (a *Api) InitRouter() {
 	r.Use(middleware.Timeout(20 * time.Second))
 	r.Use(middleware.Recoverer)
 
-	r.MethodFunc("GET", "/", func(w http.ResponseWriter, req *http.Request) {
-		w.Write([]byte("Hello"))
-	})
 	r.MethodFunc("POST", "/register", a.register)
+	r.MethodFunc("POST", "/login", a.login)
+	r.MethodFunc("GET", "/info", a.info)
+	r.MethodFunc("POST", "/refresh_tokens", a.refreshTokens)
 	a.Router = r
 }

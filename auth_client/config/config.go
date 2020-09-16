@@ -20,7 +20,7 @@ func New(envPath string) (*Config, error) {
 	config := &Config{
 		HttpPort: getEnv("HTTP_PORT", "8082"),
 		AuthPort: getEnv("AUTH_PORT", "8081"),
-		AuthHost: getEnv("AUTH_HOST", ""),
+		AuthHost: getEnv("AUTH_HOST", "localhost"),
 	}
 	return config, nil
 }

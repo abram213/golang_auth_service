@@ -5,6 +5,7 @@ import (
 	agc "auth_client/auth_grpc_conn"
 	"auth_client/config"
 	"auth_client/logger"
+	"fmt"
 	"log"
 )
 
@@ -24,9 +25,10 @@ func (a *App) Run() {
 	addr := a.Config.AuthHost + ":" + a.Config.AuthPort
 	authConn, err := agc.New(addr)
 	if err != nil {
-		//to logger
-		log.Fatalf("can't connect to auth grpc: %v", err)
+		log.Fatalf("new grpc conn err: %v", err)
 	}
+	fmt.Printf("success connected to %s", addr)
+
 	appi := api.NewAPI(authConn, a.Logger, a.Config)
 	appi.InitRouter()
 	api.ServeAPI(appi)
