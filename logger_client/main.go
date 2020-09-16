@@ -10,8 +10,14 @@ import (
 	"sync"
 )
 
+//todo: make output pretty
+
 func main() {
-	addr := "127.0.0.1:8081"
+	config, err := newConfig(".env")
+	if err != nil {
+		log.Fatalf("can`t init config: %v", err)
+	}
+	addr := config.authHost + ":" + config.authPort
 
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
@@ -38,7 +44,7 @@ func main() {
 			if err != nil {
 				log.Fatalf("unexpected error: %v, awaiting event", err)
 			}
-			fmt.Println(evt)
+			fmt.Println(evt) //change output
 		}
 	}()
 	wg.Wait()
