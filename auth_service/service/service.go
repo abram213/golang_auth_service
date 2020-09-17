@@ -6,15 +6,18 @@ import (
 	"auth_service/proto"
 	"auth_service/storage"
 	"context"
-	"errors"
 	"fmt"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
+	"log"
+	"math/rand"
 	"net"
 	"sync"
+	"time"
 )
 
 //MainServer struct combines Auth and Admin services
@@ -36,12 +39,13 @@ type AdminManager struct {
 	mu  *sync.RWMutex
 
 	loggingBroadcast chan *proto.Event
-	loggingListeners []chan *proto.Event
+	loggingListeners map[int]chan *proto.Event
 }
 
 //newMainServer create new MainServer entity
 func newMainServer(ctx context.Context, config *config.Config, db storage.Storage) *MainServer {
-	var logLs []chan *proto.Event
+	//var logLs []chan *proto.Event
+	logLs := make(map[int]chan *proto.Event)
 	logB := make(chan *proto.Event)
 	return &MainServer{
 		&AuthManager{
@@ -58,13 +62,7 @@ func newMainServer(ctx context.Context, config *config.Config, db storage.Storag
 }
 
 //StartService start gRPC server
-func StartService(ctx context.Context, addr string, config *config.Config) error {
-	//connect to db
-	db, err := storage.New(*config)
-	if err != nil {
-		return err
-	}
-
+func StartService(ctx context.Context, addr string, config *config.Config, db storage.Storage) error {
 	g, ctx := errgroup.WithContext(ctx)
 	ms := newMainServer(ctx, config, db)
 
@@ -189,13 +187,14 @@ func (am *AuthManager) RefreshTokens(ctx context.Context, req *proto.RefreshToke
 }
 
 func (am *AdminManager) Logging(in *proto.Nothing, alSrv proto.Admin_LoggingServer) error {
-	ch := am.addLogListenersCh()
+	id, ch := am.addLogListenersCh()
 	for {
 		select {
 		case event := <-ch:
 			if err := alSrv.Send(event); err != nil {
-				//to logger
-				fmt.Printf("err sending logs from chan %v to client: %v", ch, err)
+				log.Printf("sending to client err: %v\n", err)
+				log.Println("deleting channel from pool")
+				am.deleteLogListenersCh(id)
 			}
 		case <-am.ctx.Done():
 			return nil
@@ -203,12 +202,18 @@ func (am *AdminManager) Logging(in *proto.Nothing, alSrv proto.Admin_LoggingServ
 	}
 }
 
-func (am *AdminManager) addLogListenersCh() chan *proto.Event {
+func (am *AdminManager) addLogListenersCh() (int, chan *proto.Event) {
+	id, ch := randInt(), make(chan *proto.Event)
 	am.mu.Lock()
 	defer am.mu.Unlock()
-	ch := make(chan *proto.Event)
-	am.loggingListeners = append(am.loggingListeners, ch)
-	return ch
+	am.loggingListeners[id] = ch
+	return id, ch
+}
+
+func (am *AdminManager) deleteLogListenersCh(id int) {
+	am.mu.Lock()
+	defer am.mu.Unlock()
+	delete(am.loggingListeners, id)
 }
 
 func (ms *MainServer) unaryInterceptor(
@@ -219,22 +224,8 @@ func (ms *MainServer) unaryInterceptor(
 ) (interface{}, error) {
 	reply, err := handler(ctx, req)
 
-	//if err == nil request is success
-	success := false
-	if err == nil {
-		success = true
-	}
-
-	//get login from request if it exist
-	var login string
-	if userData, ok := req.(*proto.ReqUserData); ok {
-		login = userData.Login
-	}
-
-	ms.loggingBroadcast <- &proto.Event{
-		Method:  info.FullMethod,
-		Login:   login,
-		Success: success,
+	if err := ms.pushEvent(ctx, info.FullMethod, err); err != nil {
+		log.Printf("can`t push event: %v", err)
 	}
 
 	return reply, err
@@ -249,7 +240,7 @@ func (ms *MainServer) streamInterceptor(
 	//get "key" from client req context
 	key, err := ms.keyFromCtx(ss.Context())
 	if err != nil {
-		return status.Errorf(codes.Unauthenticated, err.Error())
+		return status.Errorf(codes.Unauthenticated, fmt.Sprintf("getting key from ctx: %v", err))
 	}
 
 	//simple auth
@@ -264,11 +255,41 @@ func (ms *MainServer) streamInterceptor(
 func (ms *MainServer) keyFromCtx(ctx context.Context) (string, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return "", errors.New("no metadata in incoming context")
+		return "", fmt.Errorf("no metadata in incoming context")
 	}
 	mdValues := md.Get("key")
 	if len(mdValues) < 1 {
-		return "", status.Errorf(codes.Unauthenticated, "no key in context metadata")
+		return "", fmt.Errorf("no key in context metadata")
 	}
 	return mdValues[0], nil
+}
+
+func (ms *MainServer) pushEvent(ctx context.Context, method string, err error) error {
+	p, ok := peer.FromContext(ctx)
+	if !ok {
+		return fmt.Errorf("can`t get peer from context")
+	}
+
+	var code = codes.OK
+	var msg string
+	if err != nil {
+		if st, ok := status.FromError(err); ok {
+			code = st.Code()
+			msg = st.Message()
+		}
+	}
+
+	ms.loggingBroadcast <- &proto.Event{
+		Host:      p.Addr.String(),
+		Method:    method,
+		Code:      int32(code),
+		Err:       msg,
+		Timestamp: time.Now().Unix(),
+	}
+	return nil
+}
+
+func randInt() int {
+	rand.Seed(time.Now().UnixNano())
+	return rand.Int()
 }

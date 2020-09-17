@@ -3,6 +3,7 @@ package main
 import (
 	"auth_service/config"
 	"auth_service/service"
+	"auth_service/storage"
 	"context"
 	"log"
 	"os"
@@ -11,7 +12,6 @@ import (
 )
 
 //todo: write tests
-// change proto Event structure: add host, status code and etc.
 
 func main() {
 	ctx, finish := context.WithCancel(context.Background())
@@ -20,6 +20,13 @@ func main() {
 	if err != nil {
 		log.Fatalln("initial config error:", err)
 	}
+
+	//connect to storage
+	db, err := storage.New(*conf)
+	if err != nil {
+		log.Fatalln("can`t create new storage:", err)
+	}
+	defer db.Close()
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
@@ -33,7 +40,7 @@ func main() {
 	}(wg)
 
 	addr := conf.Host + ":" + conf.Port
-	if err := service.StartService(ctx, addr, conf); err != nil {
+	if err := service.StartService(ctx, addr, conf, db); err != nil {
 		log.Fatalf("can`t start server: %v", err)
 	}
 	wg.Wait()

@@ -11,6 +11,8 @@ type Storage interface {
 	CreateUser(user *app.User) error
 	GetUserByLogin(login string) (*app.User, error)
 	GetUserByID(id uint) (*app.User, error)
+
+	Close() error
 }
 
 func New(conf config.Config) (Storage, error) {

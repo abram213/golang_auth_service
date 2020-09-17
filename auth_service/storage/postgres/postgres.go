@@ -19,3 +19,7 @@ func New(uri string) (*DBPostgres, error) {
 	db.SetMaxIdleConns(5)
 	return &DBPostgres{db}, nil
 }
+
+func (db *DBPostgres) Close() error {
+	return db.Close()
+}
