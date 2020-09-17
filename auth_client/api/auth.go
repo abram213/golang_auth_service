@@ -1,6 +1,7 @@
 package api
 
 import (
+	"auth_client/errs"
 	"auth_client/proto"
 	"context"
 	"encoding/json"
@@ -28,23 +29,23 @@ type userData struct {
 	Admin bool   `json:"admin"`
 }
 
-func (a *Api) register(w http.ResponseWriter, r *http.Request) {
+func (a *Api) register(w http.ResponseWriter, r *http.Request) error {
 	var input authInput
 
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return &errs.ApiError{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	if err := json.Unmarshal(body, &input); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return &errs.ApiError{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 
 	if err := input.validate(); err != nil {
-		http.Error(w, fmt.Sprintf("validation err: %v", err), http.StatusBadRequest)
-		return
+		return &errs.ApiError{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("validation err: %v", err),
+		}
 	}
 
 	ctx := context.Background()
@@ -53,8 +54,7 @@ func (a *Api) register(w http.ResponseWriter, r *http.Request) {
 		Password: input.Password,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	respTokens := respTokens{
@@ -63,25 +63,26 @@ func (a *Api) register(w http.ResponseWriter, r *http.Request) {
 		AccessExpires: tokens.AccessExpires,
 	}
 	json.NewEncoder(w).Encode(respTokens)
+	return nil
 }
 
-func (a *Api) login(w http.ResponseWriter, r *http.Request) {
+func (a *Api) login(w http.ResponseWriter, r *http.Request) error {
 	var input authInput
 
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return &errs.ApiError{Code: http.StatusInternalServerError, Message: err.Error()}
 	}
 	if err := json.Unmarshal(body, &input); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return &errs.ApiError{Code: http.StatusBadRequest, Message: err.Error()}
 	}
 
 	if err := input.validate(); err != nil {
-		http.Error(w, fmt.Sprintf("validation err: %v", err), http.StatusBadRequest)
-		return
+		return &errs.ApiError{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("validation err: %v", err),
+		}
 	}
 
 	ctx := context.Background()
@@ -90,8 +91,7 @@ func (a *Api) login(w http.ResponseWriter, r *http.Request) {
 		Password: input.Password,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	respTokens := respTokens{
@@ -100,13 +100,13 @@ func (a *Api) login(w http.ResponseWriter, r *http.Request) {
 		AccessExpires: tokens.AccessExpires,
 	}
 	json.NewEncoder(w).Encode(respTokens)
+	return nil
 }
 
-func (a *Api) info(w http.ResponseWriter, r *http.Request) {
+func (a *Api) info(w http.ResponseWriter, r *http.Request) error {
 	token, err := tokenFromHeader(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
+		return &errs.ApiError{Code: http.StatusUnauthorized, Message: err.Error()}
 	}
 
 	ctx := context.Background()
@@ -114,8 +114,7 @@ func (a *Api) info(w http.ResponseWriter, r *http.Request) {
 		AccessToken: token,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	userData := userData{
@@ -124,13 +123,13 @@ func (a *Api) info(w http.ResponseWriter, r *http.Request) {
 		Admin: data.Admin,
 	}
 	json.NewEncoder(w).Encode(userData)
+	return nil
 }
 
-func (a *Api) refreshTokens(w http.ResponseWriter, r *http.Request) {
+func (a *Api) refreshTokens(w http.ResponseWriter, r *http.Request) error {
 	token, err := tokenFromHeader(r)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return &errs.ApiError{Code: http.StatusUnauthorized, Message: err.Error()}
 	}
 
 	ctx := context.Background()
@@ -138,8 +137,7 @@ func (a *Api) refreshTokens(w http.ResponseWriter, r *http.Request) {
 		RefreshToken: token,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 
 	respTokens := respTokens{
@@ -148,6 +146,7 @@ func (a *Api) refreshTokens(w http.ResponseWriter, r *http.Request) {
 		AccessExpires: tokens.AccessExpires,
 	}
 	json.NewEncoder(w).Encode(respTokens)
+	return nil
 }
 
 func tokenFromHeader(r *http.Request) (string, error) {

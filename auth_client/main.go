@@ -7,12 +7,10 @@ import (
 	"os"
 )
 
-//todo: add zap as logger,
-//	write tests,
-//	add handling errors in one place and parsing grpc errors.
+//todo: write tests,
 
 func main() {
-	logger := log.New(os.Stdout, "TEST: ", log.Lshortfile)
+	logger := log.New(os.Stdout, "", log.Lshortfile)
 
 	conf, err := config.New(".env")
 	if err != nil {
