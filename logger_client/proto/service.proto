@@ -12,9 +12,10 @@ message Nothing {
 
 message Event {
     int64  timestamp = 1;
-    string method    = 2;
-    string login     = 3;
-    bool   success   = 4;
+    string host      = 2;
+    string method    = 3;
+    int32  code      = 4;
+    string err       = 5;
 }
 
 service Admin {
