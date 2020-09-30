@@ -7,6 +7,7 @@ import (
 	"auth_service/storage"
 	"context"
 	"fmt"
+	"github.com/nats-io/nats.go"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -26,11 +27,11 @@ type MainServer struct {
 	*AdminManager
 }
 
-//AuthManager contains jwt config and slice to store users
+//AuthManager contains jwt config, storage and conn to mail queue
 type AuthManager struct {
-	users   []app.User
-	config  *config.Config
-	storage storage.Storage
+	config    *config.Config
+	storage   storage.Storage
+	queueConn *nats.EncodedConn
 }
 
 //AdminManager contains channels to store logging connections
@@ -43,14 +44,15 @@ type AdminManager struct {
 }
 
 //newMainServer create new MainServer entity
-func newMainServer(ctx context.Context, config *config.Config, db storage.Storage) *MainServer {
+func newMainServer(ctx context.Context, config *config.Config, db storage.Storage, qCoon *nats.EncodedConn) *MainServer {
 	//var logLs []chan *proto.Event
 	logLs := make(map[int]chan *proto.Event)
 	logB := make(chan *proto.Event)
 	return &MainServer{
 		&AuthManager{
-			config:  config,
-			storage: db,
+			config:    config,
+			storage:   db,
+			queueConn: qCoon,
 		},
 		&AdminManager{
 			mu:               &sync.RWMutex{},
@@ -62,9 +64,9 @@ func newMainServer(ctx context.Context, config *config.Config, db storage.Storag
 }
 
 //StartService start gRPC server
-func StartService(ctx context.Context, addr string, config *config.Config, db storage.Storage) error {
+func StartService(ctx context.Context, addr string, config *config.Config, db storage.Storage, qCoon *nats.EncodedConn) error {
 	g, ctx := errgroup.WithContext(ctx)
-	ms := newMainServer(ctx, config, db)
+	ms := newMainServer(ctx, config, db, qCoon)
 
 	lis, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -130,6 +132,21 @@ func (am *AuthManager) Register(ctx context.Context, data *proto.ReqUserData) (*
 	tokens, err := user.RefreshTokens(am.config)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, fmt.Sprintf("refresh user tokens err: %v", err))
+	}
+
+	if data.Email != "" {
+		m := struct {
+			Email string
+			Title string
+			Body  string
+		}{
+			Email: data.Email,
+			Title: "Thanks for registration",
+			Body:  fmt.Sprintf("Your login: %s, password: %s to log in!", data.Login, data.Password),
+		}
+		if err := am.queueConn.Publish("emails", m); err != nil {
+			log.Printf("pushing msg to queue err: %v\n", err)
+		}
 	}
 
 	return tokens, nil

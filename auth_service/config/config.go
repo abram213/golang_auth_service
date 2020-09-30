@@ -16,6 +16,8 @@ type Config struct {
 	Port          string
 	Host          string
 	Db            DbConf
+	NatsHost      string
+	NatsPort      int
 }
 
 type DbConf struct {
@@ -45,6 +47,8 @@ func InitConfig(envPath string) (*Config, error) {
 			Name: getEnv("DB_NAME", "postgres"),
 			Port: getEnv("DB_PORT", "5432"),
 		},
+		NatsHost: getEnv("NATS_HOST", "localhost"),
+		NatsPort: getIntEnv("NATS_PORT", 4222),
 	}
 	return config, nil
 }

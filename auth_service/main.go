@@ -5,6 +5,8 @@ import (
 	"auth_service/service"
 	"auth_service/storage"
 	"context"
+	"fmt"
+	"github.com/nats-io/nats.go"
 	"log"
 	"os"
 	"os/signal"
@@ -28,6 +30,14 @@ func main() {
 	}
 	defer db.Close()
 
+	//connect to nats
+	natsURL := fmt.Sprintf("nats://%s:%v", conf.NatsHost, conf.NatsPort)
+	nConn, err := natsConn(natsURL)
+	if err != nil {
+		log.Fatalln("conn to nats err:", err)
+	}
+	defer nConn.Close()
+
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 	go func(wg *sync.WaitGroup) {
@@ -40,8 +50,22 @@ func main() {
 	}(wg)
 
 	addr := conf.Host + ":" + conf.Port
-	if err := service.StartService(ctx, addr, conf, db); err != nil {
+	if err := service.StartService(ctx, addr, conf, db, nConn); err != nil {
 		log.Fatalf("can`t start server: %v", err)
 	}
 	wg.Wait()
+}
+
+func natsConn(url string) (*nats.EncodedConn, error) {
+	conn, err := nats.Connect(url)
+	if err != nil {
+		return nil, err
+	}
+
+	eConn, err := nats.NewEncodedConn(conn, nats.JSON_ENCODER)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("connected to nats: %s\n", url)
+	return eConn, nil
 }
