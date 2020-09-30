@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 	"unicode/utf8"
 )
@@ -15,6 +16,7 @@ import (
 type authInput struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
+	Email    string `json:"email"`
 }
 
 type respTokens struct {
@@ -52,6 +54,7 @@ func (a *Api) register(w http.ResponseWriter, r *http.Request) error {
 	tokens, err := a.AuthGRPC.Register(ctx, &proto.ReqUserData{
 		Login:    input.Login,
 		Password: input.Password,
+		Email:    input.Email,
 	})
 	if err != nil {
 		return err
@@ -76,13 +79,6 @@ func (a *Api) login(w http.ResponseWriter, r *http.Request) error {
 	}
 	if err := json.Unmarshal(body, &input); err != nil {
 		return &errs.ApiError{Code: http.StatusBadRequest, Message: err.Error()}
-	}
-
-	if err := input.validate(); err != nil {
-		return &errs.ApiError{
-			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("validation err: %v", err),
-		}
 	}
 
 	ctx := context.Background()
@@ -157,6 +153,8 @@ func tokenFromHeader(r *http.Request) (string, error) {
 	return "", fmt.Errorf("jwt token not found or wrong structure")
 }
 
+var emailRegexp = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+
 func (a authInput) validate() error {
 	if a.Login == "" {
 		return fmt.Errorf("login is required")
@@ -170,6 +168,13 @@ func (a authInput) validate() error {
 	}
 	if utf8.RuneCountInString(a.Password) < 8 || utf8.RuneCountInString(a.Login) > 40 {
 		return fmt.Errorf("password must be from 8 to 40 characters")
+	}
+
+	if a.Email == "" {
+		return fmt.Errorf("email is required")
+	}
+	if !emailRegexp.MatchString(a.Email) {
+		return fmt.Errorf("email is not valid")
 	}
 
 	return nil
