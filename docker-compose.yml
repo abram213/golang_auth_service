@@ -1,6 +1,47 @@
 version: '3'
 services:
-  app:
+  postgres:
+    image: postgres:latest
+    container_name: db_postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=123456
+      - POSTGRES_DB=postgres
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./auth_service/migrations:/docker-entrypoint-initdb.d
+      - ./auth_service/postgres_volume:/var/lib/postgresql
+    networks:
+      - fullstack
+  nats:
+    image: 'bitnami/nats:latest'
+    container_name: nats_server
+    expose:
+      - "4222"
+    networks:
+      - fullstack
+    environment:
+      - HOST=nats_server
+  auth_service:
+    container_name: auth_service
+    build: ./auth_service
+    restart: on-failure
+    depends_on:
+      - postgres
+      - nats
+    links:
+      - nats
+    networks:
+      - fullstack
+    env_file:
+      - ./auth_service/.env
+    environment:
+      - HOST=auth_service
+      - DB_HOST=postgres
+      - NATS_HOST=nats_server
+  auth_api:
     container_name: auth_client
     build: ./auth_client
     ports:
@@ -26,34 +67,21 @@ services:
       - ./logger_client/.env
     environment:
       - AUTH_HOST=auth_service
-  auth_service:
-    container_name: auth_service
-    build: ./auth_service
+  mail_service:
+    container_name: mail_service
+    build: ./mail_service
     restart: on-failure
     depends_on:
-      - postgres
+      - nats
+      - auth_service
+    links:
+      - nats
     networks:
       - fullstack
     env_file:
-      - ./auth_service/.env
+      - ./mail_service/.env
     environment:
-      - HOST=auth_service
-      - DB_HOST=postgres
-  postgres:
-    image: postgres:latest
-    container_name: db_postgres
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=123456
-      - POSTGRES_DB=postgres
-      - PGDATA=/var/lib/postgresql/data/pgdata
-    ports:
-      - 5432:5432
-    volumes:
-      - ./auth_service/migrations:/docker-entrypoint-initdb.d
-      - ./auth_service/postgres_volume:/var/lib/postgresql
-    networks:
-      - fullstack
+      - NATS_HOST=nats_server
 networks:
   fullstack:
     driver: bridge
