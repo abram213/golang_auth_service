@@ -22,11 +22,11 @@ func TestHashAndCheckPassword(t *testing.T) {
 
 func TestUserIDFromToken(t *testing.T) {
 	key := "test_key"
-	userID := "test_user_id"
+	userID := 1
 
 	exp := time.Now().Add(time.Minute * time.Duration(5)).Unix()
 	claims := UserClaims{
-		userID,
+		uint(userID),
 		false,
 		jwt.StandardClaims{
 			ExpiresAt: exp,
@@ -44,8 +44,8 @@ func TestUserIDFromToken(t *testing.T) {
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
-	if tUserID != userID {
-		t.Errorf("expected user id: %s, got: %s\n", userID, tUserID)
+	if tUserID != uint(userID) {
+		t.Errorf("expected user id: %v, got: %v\n", userID, tUserID)
 	}
 }
 
@@ -54,7 +54,7 @@ func TestUserIDFromTokenErrors(t *testing.T) {
 
 	expired := time.Now().Add(time.Minute * time.Duration(-1)).Unix()
 	claims := UserClaims{
-		"test",
+		1,
 		false,
 		jwt.StandardClaims{
 			ExpiresAt: expired,
