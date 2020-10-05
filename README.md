@@ -5,7 +5,8 @@ This is simple auth service with the ability to connect multiple loggers.
 The project includes:
 * [auth_service](/auth_service) - implements user registration, issuance and updating JWT tokens, storing user information in the database.
 * [auth_client](/auth_client) - provides rest api for registration, login, info and JWT tokens update.
-* [logger_client](/logger_client) - connects using gRPC to the auth_service and displays logs in a console. 
+* [logger_client](/logger_client) - connects using gRPC to the auth_service and displays logs in a console.
+* [mail_service](/mail_service) - listens to the nats queue and sends emails. 
 
 ### How to run?
 
